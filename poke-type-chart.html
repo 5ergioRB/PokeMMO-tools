@@ -339,6 +339,55 @@
     to   { opacity: 1; transform: translateY(0); }
   }
 
+
+  /* ── Gen Toggle ── */
+  .gen-toggle {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 22px;
+    background: #0d1220;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 4px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+    animation: fadeDown 0.6s 0.15s ease both;
+  }
+
+  .gen-btn {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    font-weight: 400;
+    padding: 10px 20px;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+    color: var(--muted);
+    background: transparent;
+    letter-spacing: 0.5px;
+    line-height: 1.6;
+    white-space: nowrap;
+  }
+
+  .gen-btn.active {
+    background: var(--panel-bright, #1e2a4a);
+    color: var(--yellow);
+    box-shadow: 0 2px 12px rgba(248,208,48,0.15);
+  }
+
+  .gen-btn:not(.active):hover {
+    color: #ccc;
+  }
+
+  /* Fairy column/row hidden in gen5 mode */
+  .gen5 .fairy-col { display: none; }
+  .gen5 tr[data-type="Fairy"] { display: none; }
+  .gen5 .chip[data-type="Fairy"] { display: none; }
+
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: var(--bg); }
   ::-webkit-scrollbar-thumb { background: #2a3460; border-radius: 3px; }
@@ -384,6 +433,12 @@
 <h1>POKÉMON TYPE CHART</h1>
 <p class="subtitle">Attacking type (rows) → Defending type (columns)</p>
 
+<div class="gen-toggle">
+  <button class="gen-btn" id="btnGen5">Gen I – V</button>
+  <button class="gen-btn active" id="btnGen6">Gen VI+</button>
+</div>
+
+
 <div class="legend">
   <div class="legend-item">
     <div class="legend-box e2">2×</div>
@@ -417,13 +472,19 @@
 </div>
 </div>
 
-<p class="note">Generations VI+ (including Fairy type) · Click a type chip or type in the box to filter · Hover cells to zoom</p>
+<p class="note">Click a type chip or type to filter · Hover cells to zoom</p>
 
 <script>
-const TYPES = [
+const TYPES_GEN6 = [
   'Normal','Fire','Water','Electric','Grass','Ice',
   'Fighting','Poison','Ground','Flying','Psychic','Bug',
   'Rock','Ghost','Dragon','Dark','Steel','Fairy'
+];
+
+const TYPES_GEN5 = [
+  'Normal','Fire','Water','Electric','Grass','Ice',
+  'Fighting','Poison','Ground','Flying','Psychic','Bug',
+  'Rock','Ghost','Dragon','Dark','Steel'
 ];
 
 const ABBR = {
@@ -442,36 +503,66 @@ const TCLASS = {
   Steel:'t-steel', Fairy:'t-fairy'
 };
 
-// ATK[attack][defense] = effectiveness
+// ── Type data ──
+// Gen 6+ data (with Fairy, Ghost/Dark neutral vs Steel)
+const DATA_GEN6 = {
+  Normal:   { Rock:0.5, Ghost:0, Steel:0.5 },
+  Fire:     { Fire:0.5, Water:0.5, Grass:2, Ice:2, Bug:2, Rock:0.5, Dragon:0.5, Steel:2 },
+  Water:    { Fire:2, Water:0.5, Grass:0.5, Ground:2, Rock:2, Dragon:0.5 },
+  Electric: { Water:2, Electric:0.5, Grass:0.5, Ground:0, Flying:2, Dragon:0.5 },
+  Grass:    { Fire:0.5, Water:2, Grass:0.5, Poison:0.5, Ground:2, Flying:0.5, Bug:0.5, Rock:2, Dragon:0.5, Steel:0.5 },
+  Ice:      { Fire:0.5, Water:0.5, Grass:2, Ice:0.5, Ground:2, Flying:2, Dragon:2, Steel:0.5 },
+  Fighting: { Normal:2, Ice:2, Poison:0.5, Flying:0.5, Psychic:0.5, Bug:0.5, Rock:2, Ghost:0, Dark:2, Steel:2, Fairy:0.5 },
+  Poison:   { Grass:2, Poison:0.5, Ground:0.5, Rock:0.5, Ghost:0.5, Steel:0, Fairy:2 },
+  Ground:   { Fire:2, Electric:2, Grass:0.5, Poison:2, Flying:0, Bug:0.5, Rock:2, Steel:2 },
+  Flying:   { Electric:0.5, Grass:2, Fighting:2, Bug:2, Rock:0.5, Steel:0.5 },
+  Psychic:  { Fighting:2, Poison:2, Psychic:0.5, Dark:0, Steel:0.5 },
+  Bug:      { Fire:0.5, Grass:2, Fighting:0.5, Poison:0.5, Flying:0.5, Psychic:2, Ghost:0.5, Dark:2, Steel:0.5, Fairy:0.5 },
+  Rock:     { Fire:2, Ice:2, Fighting:0.5, Ground:0.5, Flying:2, Bug:2, Steel:0.5 },
+  Ghost:    { Normal:0, Psychic:2, Ghost:2, Dark:0.5 },
+  Dragon:   { Dragon:2, Steel:0.5, Fairy:0 },
+  Dark:     { Fighting:0.5, Psychic:2, Ghost:2, Dark:0.5, Fairy:0.5 },
+  Steel:    { Fire:0.5, Water:0.5, Electric:0.5, Ice:2, Rock:2, Steel:0.5, Fairy:2 },
+  Fairy:    { Fire:0.5, Fighting:2, Poison:0.5, Dragon:2, Dark:2, Steel:0.5 },
+};
+
+// Gen 5 differences: no Fairy, Ghost→Steel = 0.5, Dark→Steel = 0.5
+const DATA_GEN5 = {
+  Normal:   { Rock:0.5, Ghost:0, Steel:0.5 },
+  Fire:     { Fire:0.5, Water:0.5, Grass:2, Ice:2, Bug:2, Rock:0.5, Dragon:0.5, Steel:2 },
+  Water:    { Fire:2, Water:0.5, Grass:0.5, Ground:2, Rock:2, Dragon:0.5 },
+  Electric: { Water:2, Electric:0.5, Grass:0.5, Ground:0, Flying:2, Dragon:0.5 },
+  Grass:    { Fire:0.5, Water:2, Grass:0.5, Poison:0.5, Ground:2, Flying:0.5, Bug:0.5, Rock:2, Dragon:0.5, Steel:0.5 },
+  Ice:      { Fire:0.5, Water:0.5, Grass:2, Ice:0.5, Ground:2, Flying:2, Dragon:2, Steel:0.5 },
+  Fighting: { Normal:2, Ice:2, Poison:0.5, Flying:0.5, Psychic:0.5, Bug:0.5, Rock:2, Ghost:0, Dark:2, Steel:2 },
+  Poison:   { Grass:2, Poison:0.5, Ground:0.5, Rock:0.5, Ghost:0.5, Steel:0 },
+  Ground:   { Fire:2, Electric:2, Grass:0.5, Poison:2, Flying:0, Bug:0.5, Rock:2, Steel:2 },
+  Flying:   { Electric:0.5, Grass:2, Fighting:2, Bug:2, Rock:0.5, Steel:0.5 },
+  Psychic:  { Fighting:2, Poison:2, Psychic:0.5, Dark:0, Steel:0.5 },
+  Bug:      { Fire:0.5, Grass:2, Fighting:0.5, Poison:0.5, Flying:0.5, Psychic:2, Ghost:0.5, Dark:2, Steel:0.5 },
+  Rock:     { Fire:2, Ice:2, Fighting:0.5, Ground:0.5, Flying:2, Bug:2, Steel:0.5 },
+  Ghost:    { Normal:0, Psychic:2, Ghost:2, Dark:0.5, Steel:0.5 },
+  Dragon:   { Dragon:2, Steel:0.5 },
+  Dark:     { Fighting:0.5, Psychic:2, Ghost:2, Dark:0.5, Steel:0.5 },
+  Steel:    { Fire:0.5, Water:0.5, Electric:0.5, Ice:2, Rock:2, Steel:0.5 },
+};
+
+let currentGen = 6;
 const ATK = {};
 
-function setChart() {
-  TYPES.forEach(a => { ATK[a] = {}; TYPES.forEach(d => ATK[a][d] = 1); });
-  const data = {
-    Normal:   { Rock:0.5, Ghost:0, Steel:0.5 },
-    Fire:     { Fire:0.5, Water:0.5, Grass:2, Ice:2, Bug:2, Rock:0.5, Dragon:0.5, Steel:2 },
-    Water:    { Fire:2, Water:0.5, Grass:0.5, Ground:2, Rock:2, Dragon:0.5 },
-    Electric: { Water:2, Electric:0.5, Grass:0.5, Ground:0, Flying:2, Dragon:0.5 },
-    Grass:    { Fire:0.5, Water:2, Grass:0.5, Poison:0.5, Ground:2, Flying:0.5, Bug:0.5, Rock:2, Dragon:0.5, Steel:0.5 },
-    Ice:      { Fire:0.5, Water:0.5, Grass:2, Ice:0.5, Ground:2, Flying:2, Dragon:2, Steel:0.5 },
-    Fighting: { Normal:2, Ice:2, Poison:0.5, Flying:0.5, Psychic:0.5, Bug:0.5, Rock:2, Ghost:0, Dark:2, Steel:2, Fairy:0.5 },
-    Poison:   { Grass:2, Poison:0.5, Ground:0.5, Rock:0.5, Ghost:0.5, Steel:0, Fairy:2 },
-    Ground:   { Fire:2, Electric:2, Grass:0.5, Poison:2, Flying:0, Bug:0.5, Rock:2, Steel:2 },
-    Flying:   { Electric:0.5, Grass:2, Fighting:2, Bug:2, Rock:0.5, Steel:0.5 },
-    Psychic:  { Fighting:2, Poison:2, Psychic:0.5, Dark:0, Steel:0.5 },
-    Bug:      { Fire:0.5, Grass:2, Fighting:0.5, Poison:0.5, Flying:0.5, Psychic:2, Ghost:0.5, Dark:2, Steel:0.5, Fairy:0.5 },
-    Rock:     { Fire:2, Ice:2, Fighting:0.5, Ground:0.5, Flying:2, Bug:2, Steel:0.5 },
-    Ghost:    { Normal:0, Psychic:2, Ghost:2, Dark:0.5 },
-    Dragon:   { Dragon:2, Steel:0.5, Fairy:0 },
-    Dark:     { Fighting:0.5, Psychic:2, Ghost:2, Dark:0.5, Fairy:0.5 },
-    Steel:    { Fire:0.5, Water:0.5, Electric:0.5, Ice:2, Rock:2, Steel:0.5, Fairy:2 },
-    Fairy:    { Fire:0.5, Fighting:2, Poison:0.5, Dragon:2, Dark:2, Steel:0.5 },
-  };
+function buildATK(types, data) {
+  types.forEach(a => {
+    ATK[a] = {};
+    types.forEach(d => ATK[a][d] = 1);
+  });
   Object.entries(data).forEach(([atk, defs]) => {
-    Object.entries(defs).forEach(([def, val]) => { ATK[atk][def] = val; });
+    Object.entries(defs).forEach(([def, val]) => {
+      if (ATK[atk] !== undefined && ATK[atk][def] !== undefined) {
+        ATK[atk][def] = val;
+      }
+    });
   });
 }
-setChart();
 
 function effClass(v) {
   if (v === 2) return 'e2';
@@ -487,104 +578,130 @@ function effText(v) {
 }
 
 const table = document.getElementById('chart');
-
-// ── Header row: defending types across the top ──
-const headerRow = document.createElement('tr');
-const corner = document.createElement('th');
-corner.className = 'corner';
-headerRow.appendChild(corner);
-
-TYPES.forEach(def => {
-  const th = document.createElement('th');
-  th.className = `type-header ${TCLASS[def]}`;
-  th.textContent = ABBR[def];
-  th.title = def;
-  th.addEventListener('click', () => {});
-  headerRow.appendChild(th);
-});
-table.appendChild(headerRow);
-
-// ── Data rows: one per attacking type ──
-const rowMap = {}; // type -> <tr>
-TYPES.forEach(atk => {
-  const row = document.createElement('tr');
-  row.className = 'atk-row';
-  row.dataset.type = atk;
-  rowMap[atk] = row;
-
-  const atkTh = document.createElement('th');
-  atkTh.className = `type-header ${TCLASS[atk]}`;
-  atkTh.textContent = ABBR[atk];
-  atkTh.title = atk;
-  atkTh.addEventListener('click', () => selectType(atk));
-  row.appendChild(atkTh);
-
-  TYPES.forEach(def => {
-    const val = ATK[atk][def];
-    const td = document.createElement('td');
-    td.className = `eff ${effClass(val)}`;
-    td.textContent = effText(val);
-    td.title = `${atk} → ${def}: ${val === 0.5 ? '½×' : val + '×'}`;
-    row.appendChild(td);
-  });
-
-  table.appendChild(row);
-});
-
-// ── Type chips ──
-const chipsEl = document.getElementById('chips');
 let activeType = null;
 
-TYPES.forEach(t => {
-  const chip = document.createElement('button');
-  chip.className = `chip ${TCLASS[t]}`;
-  chip.textContent = t;
-  chip.dataset.type = t;
-  chip.addEventListener('click', () => {
-    if (activeType === t) clearFilter();
-    else selectType(t);
+function buildTable(gen) {
+  const types = gen === 5 ? TYPES_GEN5 : TYPES_GEN6;
+  const data  = gen === 5 ? DATA_GEN5  : DATA_GEN6;
+  buildATK(types, data);
+
+  // Clear table
+  table.innerHTML = '';
+  clearFilter(true);
+
+  // Header row
+  const headerRow = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'corner';
+  headerRow.appendChild(corner);
+
+  types.forEach(def => {
+    const th = document.createElement('th');
+    th.className = `type-header ${TCLASS[def]}`;
+    if (def === 'Fairy') th.classList.add('fairy-col');
+    th.textContent = ABBR[def];
+    th.title = def;
+    headerRow.appendChild(th);
   });
-  chipsEl.appendChild(chip);
-});
+  table.appendChild(headerRow);
+
+  // Data rows
+  types.forEach(atk => {
+    const row = document.createElement('tr');
+    row.className = 'atk-row';
+    row.dataset.type = atk;
+
+    const atkTh = document.createElement('th');
+    atkTh.className = `type-header ${TCLASS[atk]}`;
+    atkTh.textContent = ABBR[atk];
+    atkTh.title = atk;
+    atkTh.addEventListener('click', () => selectType(atk));
+    row.appendChild(atkTh);
+
+    types.forEach(def => {
+      const val = ATK[atk][def];
+      const td = document.createElement('td');
+      td.className = `eff ${effClass(val)}`;
+      if (def === 'Fairy') td.classList.add('fairy-col');
+      td.textContent = effText(val);
+      td.title = `${atk} → ${def}: ${val === 0.5 ? '½×' : val + '×'}`;
+      row.appendChild(td);
+    });
+
+    table.appendChild(row);
+  });
+
+  // Rebuild chips
+  const chipsEl = document.getElementById('chips');
+  chipsEl.innerHTML = '';
+  types.forEach(t => {
+    const chip = document.createElement('button');
+    chip.className = `chip ${TCLASS[t]}`;
+    chip.textContent = t;
+    chip.dataset.type = t;
+    chip.addEventListener('click', () => {
+      if (activeType === t) clearFilter();
+      else selectType(t);
+    });
+    chipsEl.appendChild(chip);
+  });
+}
 
 function selectType(type) {
   activeType = type;
-  // Update chips
   document.querySelectorAll('.chip').forEach(c => {
     c.classList.toggle('active', c.dataset.type === type);
   });
-  // Update search box
   document.getElementById('typeSearch').value = type;
-  // Update table
   table.classList.add('filtered');
   document.querySelectorAll('.atk-row').forEach(row => {
     row.classList.toggle('selected', row.dataset.type === type);
   });
 }
 
-function clearFilter() {
+function clearFilter(silent) {
   activeType = null;
   document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  document.getElementById('typeSearch').value = '';
+  if (!silent) document.getElementById('typeSearch').value = '';
   table.classList.remove('filtered');
   document.querySelectorAll('.atk-row').forEach(row => row.classList.remove('selected'));
 }
 
+// ── Gen toggle ──
+const btnGen5 = document.getElementById('btnGen5');
+const btnGen6 = document.getElementById('btnGen6');
+
+function setGen(gen) {
+  currentGen = gen;
+  btnGen5.classList.toggle('active', gen === 5);
+  btnGen6.classList.toggle('active', gen === 6);
+  document.getElementById('typeSearch').value = '';
+  buildTable(gen);
+
+  // Update note
+  document.querySelector('.note').textContent =
+    gen === 5
+      ? 'Gen I–V · No Fairy type · Ghost & Dark do ½ vs Steel · Hover cells to zoom'
+      : 'Gen VI+ · Includes Fairy type · Hover cells to zoom';
+}
+
+btnGen5.addEventListener('click', () => setGen(5));
+btnGen6.addEventListener('click', () => setGen(6));
+
 // ── Search input ──
 const searchEl = document.getElementById('typeSearch');
 searchEl.addEventListener('input', () => {
+  const types = currentGen === 5 ? TYPES_GEN5 : TYPES_GEN6;
   const q = searchEl.value.trim().toLowerCase();
   if (!q) { clearFilter(); return; }
 
-  // Only highlight if exactly one type matches, or there's an exact match
-  const exactMatch = TYPES.find(t => t.toLowerCase() === q);
+  const exactMatch = types.find(t => t.toLowerCase() === q);
   if (exactMatch) { selectType(exactMatch); return; }
 
-  const startMatches = TYPES.filter(t => t.toLowerCase().startsWith(q));
+  const startMatches = types.filter(t => t.toLowerCase().startsWith(q));
   if (startMatches.length === 1) {
     selectType(startMatches[0]);
   } else {
-    // Multiple or zero matches — clear highlight and wait for more input
     table.classList.remove('filtered');
     document.querySelectorAll('.atk-row').forEach(row => row.classList.remove('selected'));
     document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
@@ -592,7 +709,10 @@ searchEl.addEventListener('input', () => {
   }
 });
 
-document.getElementById('clearBtn').addEventListener('click', clearFilter);
+document.getElementById('clearBtn').addEventListener('click', () => clearFilter());
+
+// Initial build
+buildTable(6);
 </script>
 </body>
 </html>
