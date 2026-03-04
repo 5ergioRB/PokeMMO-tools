@@ -813,6 +813,9 @@ function setGen(gen) {
   document.getElementById('defType2').value = '';
   document.getElementById('lookupResults').classList.remove('visible');
   buildTable(gen);
+  // Re-apply pokemon search if one was already found
+  const pokeName = document.getElementById('pokeSearch').value.trim().toLowerCase();
+  if (pokeName) fetchPokemonTypes(pokeName);
   document.getElementById('noteEl').textContent = gen===5
     ? 'Gen I–V · No Fairy · Ghost & Dark do ½× vs Steel · Click row labels to filter attack · Click column labels to highlight defense'
     : 'Gen VI+ · Includes Fairy · Click row labels to filter attack · Click column labels to highlight defense';
