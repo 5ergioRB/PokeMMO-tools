@@ -530,9 +530,41 @@ body::before {
 ::-webkit-scrollbar { width:5px; }
 ::-webkit-scrollbar-track { background:var(--bg); }
 ::-webkit-scrollbar-thumb { background:#2a3460; border-radius:3px; }
+
+  /* back button */
+  .back-btn {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 900;
+    padding: 8px 14px;
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s, background 0.15s, box-shadow 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .back-btn:hover {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: rgba(104,144,240,0.08);
+    box-shadow: 0 4px 20px rgba(104,144,240,0.15);
+  }
+  .back-btn .arrow { font-size: 15px; transition: transform 0.15s; }
+  .back-btn:hover .arrow { transform: translateX(-3px); }
 </style>
 </head>
 <body>
+<a class="back-btn" href="index.html"><span class="arrow">←</span> Back</a>
+
 <div class="pokeball-bg"></div>
 <div class="pokeball-bg2"></div>
 
