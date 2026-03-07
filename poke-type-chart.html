@@ -406,6 +406,32 @@
   .stat-total-val {
     font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--text);
   }
+  /* Pokémon info layout */
+  .poke-info-wrap {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .poke-info-text { flex: 1; min-width: 0; }
+  .poke-sprite-wrap {
+    flex-shrink: 0;
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .poke-sprite {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    image-rendering: pixelated;
+    animation: fadeUp .3s ease both;
+  }
 
   .autocomplete-list {
     position: absolute;
@@ -473,7 +499,12 @@
       <div class="poke-spinner" id="pokeSpinner"></div>
       <div class="autocomplete-list" id="autocompleteList"></div>
     </div>
-    <span class="poke-status empty" id="pokeStatus">—</span>
+  </div>
+  <div class="poke-info-wrap" id="pokeInfoWrap" style="display:none;margin-top:10px">
+    <div class="poke-info-text"><span class="poke-status empty" id="pokeStatus">—</span></div>
+    <div class="poke-sprite-wrap">
+      <img id="pokeSprite" class="poke-sprite" src="" alt="">
+    </div>
   </div>
   <hr class="poke-divider">
   <div class="lookup-row">
@@ -895,6 +926,7 @@ function setPokeStatus(state, html) {
   pokeStatus.innerHTML = html;
   pokeSearchEl.className = state === 'empty' ? '' : state;
   pokeSpinner.classList.toggle('visible', state === 'loading');
+  document.getElementById('pokeInfoWrap').style.display = (state === 'found') ? 'flex' : 'none';
 }
 
 function showAutocomplete(names) {
@@ -1031,6 +1063,13 @@ async function fetchPokemonTypes(name) {
       `<div class="stat-bars">${statRowsHtml}<div class="stat-total-row"><span>BASE TOTAL</span><span class="stat-total-val">${total}</span></div></div>`
     ].join('');
 
+    // Set sprite — prefer official artwork, fall back to front_default sprite
+    const spriteEl = document.getElementById('pokeSprite');
+    const artworkUrl = data.sprites?.other?.['official-artwork']?.front_default;
+    const fallbackUrl = data.sprites?.front_default;
+    spriteEl.src = artworkUrl || fallbackUrl || '';
+    spriteEl.alt = displayName;
+
     setPokeStatus('found', abilitiesHtml);
   } catch(e) {
     setPokeStatus('error', 'Pokémon not found');
@@ -1043,6 +1082,8 @@ document.getElementById('lookupClear').addEventListener('click', () => {
   pokeSearchEl.value = '';
   setPokeStatus('empty', '—');
   acList.classList.remove('visible');
+  document.getElementById('pokeSprite').src = '';
+  document.getElementById('pokeInfoWrap').style.display = 'none';
 });
 
 // Init
