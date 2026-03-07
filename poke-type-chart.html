@@ -374,6 +374,38 @@
   .poke-status .info-row {
     display: block;
   }
+  .stat-bars {
+    display: grid;
+    grid-template-columns: 52px 32px 1fr;
+    gap: 3px 8px;
+    align-items: center;
+    margin-top: 6px;
+  }
+  .stat-name {
+    font-size: 10px; font-weight: 900; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .5px; text-align: right;
+  }
+  .stat-val {
+    font-size: 11px; font-weight: 900; text-align: right;
+    font-family: 'Press Start 2P', monospace;
+  }
+  .stat-bar-bg {
+    height: 8px; border-radius: 4px;
+    background: #1a2035; overflow: hidden;
+  }
+  .stat-bar-fill {
+    height: 100%; border-radius: 4px;
+    transition: width .4s ease;
+  }
+  .stat-total-row {
+    grid-column: 1 / -1;
+    display: flex; justify-content: space-between; align-items: center;
+    border-top: 1px solid var(--border); margin-top: 3px; padding-top: 4px;
+    font-size: 10px; font-weight: 900; color: var(--muted);
+  }
+  .stat-total-val {
+    font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--text);
+  }
 
   .autocomplete-list {
     position: absolute;
@@ -977,9 +1009,26 @@ async function fetchPokemonTypes(name) {
       .filter(a => a.is_hidden)
       .map(a => a.ability.name.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
 
+    // Base stats
+    const statNames = { hp:'HP', attack:'ATK', defense:'DEF', 'special-attack':'SpA', 'special-defense':'SpD', speed:'SPD' };
+    const statColors = { hp:'#e05c5c', attack:'#f08030', defense:'#f8d030', 'special-attack':'#6890f0', 'special-defense':'#78c850', speed:'#98d8d8' };
+    const stats = {};
+    data.stats.forEach(s => { stats[s.stat.name] = s.base_stat; });
+    const total = Object.values(stats).reduce((a,b) => a+b, 0);
+    const MAX_STAT = 255;
+
+    const statRowsHtml = Object.entries(statNames).map(([key, label]) => {
+      const val = stats[key] || 0;
+      const pct = Math.round((val / MAX_STAT) * 100);
+      const color = statColors[key];
+      const textColor = val >= 100 ? '#fff' : val >= 60 ? 'var(--text)' : 'var(--muted)';
+      return `<span class="stat-name">${label}</span><span class="stat-val" style="color:${textColor}">${val}</span><div class="stat-bar-bg"><div class="stat-bar-fill" style="width:${pct}%;background:${color}"></div></div>`;
+    }).join('');
+
     const abilitiesHtml = [
       `<span class="info-row"><strong>${displayName}</strong>: ${validTypes.join(' / ')} · ${weightKg} kg (${weightLbs} lbs)</span>`,
-      `<span class="info-row">Abilities: <span class="ability-normal">${normalAbilities.join(', ')}</span>${hiddenAbility.length ? ` · <span class="ability-hidden">HA: ${hiddenAbility[0]}</span>` : ''}</span>`
+      `<span class="info-row">Abilities: <span class="ability-normal">${normalAbilities.join(', ')}</span>${hiddenAbility.length ? ` · <span class="ability-hidden">HA: ${hiddenAbility[0]}</span>` : ''}</span>`,
+      `<div class="stat-bars">${statRowsHtml}<div class="stat-total-row"><span>BASE TOTAL</span><span class="stat-total-val">${total}</span></div></div>`
     ].join('');
 
     setPokeStatus('found', abilitiesHtml);
