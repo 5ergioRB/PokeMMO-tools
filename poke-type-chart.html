@@ -1532,17 +1532,20 @@ function setDexFilter(f) {
   if (dexLoaded) refreshDexGrid();
 }
 
-document.getElementById('dexSearch').addEventListener('input', e => {
-  dexQuery = e.target.value.trim();
-  if (dexLoaded) refreshDexGrid();
-});
 
-document.addEventListener('click', e => {
-  if (!e.target.closest('#dexResetBtn')) return;
-  if (!confirm('Reset your entire shiny collection? This cannot be undone.')) return;
-  localStorage.removeItem(DEX_KEY);
-  updateDexCount();
-  if (dexLoaded) refreshDexGrid();
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('dexResetBtn').addEventListener('click', () => {
+    if (!confirm('Reset your entire shiny collection? This cannot be undone.')) return;
+    localStorage.removeItem(DEX_KEY);
+    updateDexCount();
+    if (dexLoaded) refreshDexGrid();
+  });
+
+  document.getElementById('dexSearch').addEventListener('input', e => {
+    dexQuery = e.target.value.trim();
+    if (dexLoaded) refreshDexGrid();
+  });
 });
 
 
